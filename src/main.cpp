@@ -60,25 +60,30 @@ void pitch(float pitchAngle){
     } 
 
     void roll(int throttleValue, float rollAngle) {
-        
-        float RollPID[3] = {1, 0.05, 0.1};
-        // float K_scale = static_cast<float>(2000 - 1000) / 180; // Assuming linear mapping between angle and speed
-        float Motorspeed;
-        
+    float RollPID[3] = {1, 0.05, 0.1};
+    float Motorspeed;
 
-        float rollError = (ypr[2] * 180 / M_PI) - rollAngle;
+    float rollError = (ypr[2] * 180 / M_PI) - rollAngle;
 
-        Motorspeed =((RollPID[0] * rollError) + (RollPID[1] * (prev_rollError + rollError)) + (RollPID[2] * (prev_rollError - rollError)));
-        Serial.println(throttleValue + (int)Motorspeed);
-        Serial.println(throttleValue - (int)Motorspeed);
+    Motorspeed = ((RollPID[0] * rollError) + (RollPID[1] * (prev_rollError + rollError)) + (RollPID[2] * (prev_rollError - rollError)));
 
-        // Optional clipping
-        Motorspeed = fmax(1000.0f, fmin(2000.0f, Motorspeed));
+    // Adjusting motor speeds based on roll error
+    int leftMotorSpeed = throttleValue + (int) Motorspeed;
+    int rightMotorSpeed = throttleValue - (int) Motorspeed;
 
-        prev_rollError = rollError;
-        bldcL.writeMicroseconds(throttleValue + (int)Motorspeed);
-        bldcR.writeMicroseconds(throttleValue - (int)Motorspeed);
-} 
+    // Optional clipping
+    leftMotorSpeed = constrain(leftMotorSpeed, 1000, 2000);
+    rightMotorSpeed = constrain(rightMotorSpeed, 1000, 2000);
+    Serial.println(leftMotorSpeed);
+    Serial.println(rightMotorSpeed);
+
+
+    prev_rollError = rollError;
+
+    // Set motor speeds
+    bldcL.writeMicroseconds(leftMotorSpeed);
+    bldcR.writeMicroseconds(rightMotorSpeed);
+}
 
 void setup() {
     
