@@ -46,6 +46,12 @@ void armMotors (){
     digitalWrite(LED_BUILTIN, LOW);
     delay(3000);
 }
+
+void disarmMotors(){
+    bldcL.writeMicroseconds(1000);
+    bldcR.writeMicroseconds(1000);
+    delay(2000);
+}
 void throttle(int throttleValue){
     bldcL.writeMicroseconds(throttleValue);
     bldcR.writeMicroseconds(throttleValue);
@@ -60,33 +66,33 @@ void pitch(float pitchAngle){
     } 
 
     void roll(int throttleValue, float rollAngle) {
-    float RollPID[3] = {1, 0.05, 0.1};
-    float Motorspeed;
+        float RollPID[3] = {0.5, 0.1,1.0 };
+        float K_scale = (2000 - 1000) / 180;
+        float Motorspeed;
 
-    float rollError = (ypr[2] * 180 / M_PI) - rollAngle;
+        float rollError = (ypr[2] * 180 / M_PI) - rollAngle;
 
-    Motorspeed = ((RollPID[0] * rollError) + (RollPID[1] * (prev_rollError + rollError)) + (RollPID[2] * (prev_rollError - rollError)));
+        Motorspeed = K_scale * ((RollPID[0] * rollError) + (RollPID[1] * (prev_rollError + rollError)) + (RollPID[2] * (prev_rollError - rollError)));
 
-    // Adjusting motor speeds based on roll error
-    int leftMotorSpeed = throttleValue + (int) Motorspeed;
-    int rightMotorSpeed = throttleValue - (int) Motorspeed;
+        // Adjusting motor speeds based on roll error
+        int leftMotorSpeed = throttleValue + (int)Motorspeed;
+        int rightMotorSpeed = throttleValue - (int)Motorspeed;
 
-    // Optional clipping
-    leftMotorSpeed = constrain(leftMotorSpeed, 1000, 2000);
-    rightMotorSpeed = constrain(rightMotorSpeed, 1000, 2000);
-    Serial.println(leftMotorSpeed);
-    Serial.println(rightMotorSpeed);
+        // Optional clipping
+        leftMotorSpeed = constrain(leftMotorSpeed, 1000, 2000);
+        rightMotorSpeed = constrain(rightMotorSpeed, 1000, 2000);
+        Serial.println(leftMotorSpeed);
+        Serial.println(rightMotorSpeed);
 
+        prev_rollError = rollError;
 
-    prev_rollError = rollError;
-
-    // Set motor speeds
-    bldcL.writeMicroseconds(leftMotorSpeed);
-    bldcR.writeMicroseconds(rightMotorSpeed);
+        // Set motor speeds
+        bldcL.writeMicroseconds(leftMotorSpeed);
+        bldcR.writeMicroseconds(rightMotorSpeed);
 }
 
 void setup() {
-    
+    disarmMotors();
 
 #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
         Wire.begin();
