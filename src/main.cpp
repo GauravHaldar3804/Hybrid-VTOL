@@ -1,12 +1,17 @@
 #include <Arduino.h>
 #include "I2Cdev.h"
 #include "MPU6050_6Axis_MotionApps20.h"
+#include <ESP32Servo.h>
+#include <math.h>
 #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
     #include "Wire.h"
 #endif
 #define INTERRUPT_PIN 4 
 
 MPU6050 mpu;
+Servo bldcR, bldcL, servoR, servoL;
+float RollAngle;
+float prev_rollError = 0;
 
 // MPU control/status vars
 bool dmpReady = false;  // set true if DMP init was successful
@@ -29,10 +34,56 @@ volatile bool mpuInterrupt = false;     // indicates whether MPU interrupt pin h
 void dmpDataReady() {
     mpuInterrupt = true;
 }
+void armMotors (){
+    pinMode(LED_BUILTIN, OUTPUT);
 
+    digitalWrite(LED_BUILTIN, HIGH);
+    bldcL.writeMicroseconds(2000);
+    bldcR.writeMicroseconds(2000);
+    delay(3000);
+    bldcL.writeMicroseconds(1000);
+    bldcR.writeMicroseconds(1000);
+    digitalWrite(LED_BUILTIN, LOW);
+    delay(3000);
+}
+void throttle(int throttleValue){
+    bldcL.writeMicroseconds(throttleValue);
+    bldcR.writeMicroseconds(throttleValue);
+}
+void pitch(float pitchAngle){
+    float PitchPID[3];
+    float servoAngle;
+    float prev_pitchError;
+    float pitchError = (ypr[0]* 180/M_PI) - pitchAngle;
+    servoAngle = (PitchPID[0] * pitchError) + (PitchPID[1] * (prev_pitchError + pitchError)) + (PitchPID[2] * (prev_pitchError - pitchError));
+    prev_pitchError = pitchError;
+    } 
+
+    void roll(int throttleValue, float rollAngle) {
+        
+        float RollPID[3] = {1, 0.05, 0.1};
+        // float K_scale = static_cast<float>(2000 - 1000) / 180; // Assuming linear mapping between angle and speed
+        float Motorspeed;
+        
+
+        float rollError = (ypr[2] * 180 / M_PI) - rollAngle;
+
+        Motorspeed =((RollPID[0] * rollError) + (RollPID[1] * (prev_rollError + rollError)) + (RollPID[2] * (prev_rollError - rollError)));
+        Serial.println(throttleValue + (int)Motorspeed);
+        Serial.println(throttleValue - (int)Motorspeed);
+
+        // Optional clipping
+        Motorspeed = fmax(1000.0f, fmin(2000.0f, Motorspeed));
+
+        prev_rollError = rollError;
+        bldcL.writeMicroseconds(throttleValue + (int)Motorspeed);
+        bldcR.writeMicroseconds(throttleValue - (int)Motorspeed);
+} 
 
 void setup() {
- #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
+    
+
+#if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
         Wire.begin();
         Wire.setClock(400000); // 400kHz I2C clock. Comment this line if having compilation difficulties
     #elif I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_FASTWIRE
@@ -98,7 +149,12 @@ void setup() {
         Serial.print(devStatus);
         Serial.println(F(")"));
     }
+    bldcL.attach(5,1000,2000);
+    bldcR.attach(4,1000,2000);
 
+    armMotors();
+
+    
 }
 
 
@@ -111,6 +167,7 @@ void loop() {
     mpu.dmpGetQuaternion(&q, fifoBuffer);
             mpu.dmpGetGravity(&gravity, &q);
             mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
+            roll(1100,(float)0.0);
             Serial.print("ypr\t");
             Serial.print(ypr[0] * 180/M_PI);
             Serial.print("\t");
@@ -118,6 +175,8 @@ void loop() {
             Serial.print("\t");
             Serial.println(ypr[2] * 180/M_PI);
             // delay(3000);
+            
+            delay(200);
         }
 }
 
