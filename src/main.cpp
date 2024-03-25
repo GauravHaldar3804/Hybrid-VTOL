@@ -66,7 +66,7 @@ void pitch(float pitchAngle){
     } 
 
     void roll(int throttleValue, float rollAngle) {
-        float RollPID[3] = {0.5, 0.1,1.0 };
+        float RollPID[3] = {0.4, 0.1, 0.4};
         float K_scale = (2000 - 1000) / 180;
         float Motorspeed;
 
@@ -187,7 +187,7 @@ void loop() {
             Serial.println(ypr[2] * 180/M_PI);
             // delay(3000);
             
-            delay(200);
+            delay(100);
         }
 }
 
